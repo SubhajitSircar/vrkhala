@@ -561,7 +561,7 @@ GameObject:
   - component: {fileID: 416993211}
   m_Layer: 0
   m_Name: Cube
-  m_TagString: Untagged
+  m_TagString: Placeable
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -882,7 +882,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   m_InteractionLayers:
-    m_Bits: 6
+    m_Bits: 4294967295
   m_AttachTransform: {fileID: 0}
   m_KeepSelectedTargetValid: 1
   m_DisableVisualsWhenBlockedInGroup: 1
@@ -1006,7 +1006,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   furniturePrefabs:
-  - {fileID: 2691989817292064995, guid: 1427e924384772140945ac11f42b05b5, type: 3}
+  - {fileID: 6219804885464251833, guid: 019cc4de5bdaf664da12b4e48e0b2b93, type: 3}
 --- !u!4 &489627134
 Transform:
   m_ObjectHideFlags: 0
@@ -1439,6 +1439,7 @@ GameObject:
   m_Component:
   - component: {fileID: 647960996}
   - component: {fileID: 647961001}
+  - component: {fileID: 647961002}
   m_Layer: 0
   m_Name: Left Controller
   m_TagString: Untagged
@@ -1707,6 +1708,20 @@ MonoBehaviour:
     m_Reference: {fileID: -1636515391019944688, guid: c348712bda248c246b8c49b3db54643f,
       type: 3}
   m_ButtonPressPoint: 0.5
+--- !u!114 &647961002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 647960995}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 027b3f8959d55414f8c78c091bab0fa0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rayInteractor: {fileID: 764227417}
+  holdTime: 0.5
 --- !u!1 &716981145
 GameObject:
   m_ObjectHideFlags: 0
@@ -2163,7 +2178,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   m_InteractionLayers:
-    m_Bits: 2
+    m_Bits: 10
   m_AttachTransform: {fileID: 0}
   m_KeepSelectedTargetValid: 1
   m_DisableVisualsWhenBlockedInGroup: 1
@@ -2879,7 +2894,8 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 8
-  previewMaterial: {fileID: 2100000, guid: 965bc1ffea52dd2439b9799089dc33ca, type: 2}
+  validMaterial: {fileID: 2100000, guid: 965bc1ffea52dd2439b9799089dc33ca, type: 2}
+  invalidMaterial: {fileID: 2100000, guid: 362cc4929465cec4f807836a6376fae1, type: 2}
   distance: 5
 --- !u!4 &1508728970
 Transform:
@@ -3054,8 +3070,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   inventoryUI: {fileID: 1891344606}
   playerCamera: {fileID: 528150527}
-  distanceFromPlayer: 1.5
-  heightOffset: 0.4
+  distanceFromPlayer: 1.3
+  heightOffset: 0.8
   followSpeed: 5
 --- !u!4 &1522278581
 Transform:

@@ -8,8 +8,9 @@ public class PlacementManager : MonoBehaviour
     public InventoryManager inventory;
     public LayerMask groundLayer;
 
-    [Header("Preview Settings")]
-    public Material previewMaterial;
+    [Header("Preview Materials")]
+    public Material validMaterial;
+    public Material invalidMaterial;
 
     [Header("Placement Settings")]
     public float distance = 5f;
@@ -17,6 +18,7 @@ public class PlacementManager : MonoBehaviour
     private GameObject previewObject;
     private float currentRotationY = 0f;
     private bool wasPressedLastFrame = false;
+    private bool isValidPlacement = false;
 
     void Update()
     {
@@ -25,18 +27,19 @@ public class PlacementManager : MonoBehaviour
         HandlePlacement();
     }
 
+    // ================= PREVIEW =================
     void HandlePreview()
     {
         GameObject prefab = inventory.GetSelectedItem();
 
-        // Create preview if not exists
+        // Create preview
         if (prefab != null && previewObject == null)
         {
             previewObject = Instantiate(prefab);
-            ApplyPreviewMaterial(previewObject);
+            DisableColliders(previewObject); // IMPORTANT
         }
 
-        // Destroy preview if no item selected
+        // Destroy preview if deselected
         if (prefab == null && previewObject != null)
         {
             Destroy(previewObject);
@@ -45,18 +48,61 @@ public class PlacementManager : MonoBehaviour
 
         if (previewObject == null) return;
 
-        // Move preview to hit point
         Ray ray = new Ray(Camera.main.transform.position, Camera.main.transform.forward);
 
         if (Physics.Raycast(ray, out RaycastHit hit, distance, groundLayer))
         {
             Vector3 pos = hit.point + Vector3.up * 0.05f;
-            previewObject.transform.position = pos;
 
+            previewObject.transform.position = pos;
             previewObject.transform.rotation = Quaternion.Euler(0, currentRotationY, 0);
+
+            // Check placement
+            isValidPlacement = CheckValidPlacement();
+
+            // Apply color
+            ApplyMaterial(previewObject, isValidPlacement ? validMaterial : invalidMaterial);
         }
     }
 
+    // ================= VALIDATION =================
+    bool CheckValidPlacement()
+    {
+        Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>();
+
+        Bounds bounds = renderers[0].bounds;
+
+        foreach (Renderer r in renderers)
+        {
+            bounds.Encapsulate(r.bounds);
+        }
+
+        Collider[] colliders = Physics.OverlapBox(
+            bounds.center,
+            bounds.extents,
+            previewObject.transform.rotation
+        );
+
+        foreach (Collider col in colliders)
+        {
+            // Ignore preview object itself
+            if (col.transform.IsChildOf(previewObject.transform))
+                continue;
+
+            // Ignore ground
+            if (col.gameObject.layer == LayerMask.NameToLayer("Ground"))
+                continue;
+
+            if (!col.isTrigger)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // ================= ROTATION =================
     void HandleRotation()
     {
         InputDevice device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
@@ -72,6 +118,7 @@ public class PlacementManager : MonoBehaviour
         }
     }
 
+    // ================= PLACEMENT =================
     void HandlePlacement()
     {
         InputDevice device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
@@ -80,7 +127,14 @@ public class PlacementManager : MonoBehaviour
         {
             if (pressed && !wasPressedLastFrame)
             {
-                PlaceObject();
+                if (isValidPlacement)
+                {
+                    PlaceObject();
+                }
+                else
+                {
+                    Debug.Log("Invalid placement!");
+                }
             }
 
             wasPressedLastFrame = pressed;
@@ -91,28 +145,6 @@ public class PlacementManager : MonoBehaviour
     {
         GameObject prefab = inventory.GetSelectedItem();
 
-        if (prefab == null || previewObject == null) return;
-
-        Vector3 position = previewObject.transform.position;
-
-        // ✅ Check overlap (collision)
-        Collider[] colliders = Physics.OverlapBox(
-            position,
-            previewObject.transform.localScale / 2f,
-            previewObject.transform.rotation
-        );
-
-        // If something is already there → don't place
-        foreach (Collider col in colliders)
-        {
-            if (!col.isTrigger && col.gameObject != previewObject)
-            {
-                Debug.Log("Cannot place here!");
-                return;
-            }
-        }
-
-        // Place object
         GameObject obj = Instantiate(prefab,
             previewObject.transform.position,
             previewObject.transform.rotation);
@@ -128,13 +160,24 @@ public class PlacementManager : MonoBehaviour
         inventory.ClearSelection();
     }
 
-    void ApplyPreviewMaterial(GameObject obj)
+    // ================= HELPERS =================
+    void ApplyMaterial(GameObject obj, Material mat)
     {
         Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
 
         foreach (Renderer r in renderers)
         {
-            r.material = previewMaterial;
+            r.material = mat;
+        }
+    }
+
+    void DisableColliders(GameObject obj)
+    {
+        Collider[] cols = obj.GetComponentsInChildren<Collider>();
+
+        foreach (Collider c in cols)
+        {
+            c.enabled = false;
         }
     }
 
