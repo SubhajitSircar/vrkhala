@@ -1006,7 +1006,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   furniturePrefabs:
-  - {fileID: 6219804885464251833, guid: 019cc4de5bdaf664da12b4e48e0b2b93, type: 3}
+  - {fileID: 6500625642052458572, guid: 1427e924384772140945ac11f42b05b5, type: 3}
 --- !u!4 &489627134
 Transform:
   m_ObjectHideFlags: 0
