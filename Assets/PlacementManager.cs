@@ -6,7 +6,6 @@ public class PlacementManager : MonoBehaviour
 {
     [Header("References")]
     public InventoryManager inventory;
-    public LayerMask groundLayer;
 
     [Header("Preview Materials")]
     public Material validMaterial;
@@ -36,7 +35,7 @@ public class PlacementManager : MonoBehaviour
         if (prefab != null && previewObject == null)
         {
             previewObject = Instantiate(prefab);
-            DisableColliders(previewObject); // IMPORTANT
+            DisableColliders(previewObject);
         }
 
         // Destroy preview if deselected
@@ -50,17 +49,49 @@ public class PlacementManager : MonoBehaviour
 
         Ray ray = new Ray(Camera.main.transform.position, Camera.main.transform.forward);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, distance, groundLayer))
+        if (Physics.Raycast(ray, out RaycastHit hit, distance))
         {
-            Vector3 pos = hit.point + Vector3.up * 0.05f;
+            PlaceableObject placeable = previewObject.GetComponent<PlaceableObject>();
 
-            previewObject.transform.position = pos;
-            previewObject.transform.rotation = Quaternion.Euler(0, currentRotationY, 0);
+            if (placeable == null)
+            {
+                Debug.LogError("Missing PlaceableObject script!");
+                return;
+            }
 
-            // Check placement
-            isValidPlacement = CheckValidPlacement();
+            int hitLayer = hit.collider.gameObject.layer;
+            bool canPlace = false;
 
-            // Apply color
+            // ================= LAYER BASED SURFACE CHECK =================
+            if (placeable.placementType == PlacementType.Floor &&
+                hitLayer == LayerMask.NameToLayer("Floor"))
+                canPlace = true;
+
+            else if (placeable.placementType == PlacementType.Wall &&
+                     hitLayer == LayerMask.NameToLayer("Wall"))
+                canPlace = true;
+
+            else if (placeable.placementType == PlacementType.Surface &&
+                     hitLayer == LayerMask.NameToLayer("Surface"))
+                canPlace = true;
+
+            // ================= POSITION =================
+            previewObject.transform.position = hit.point + hit.normal * 0.02f;
+
+            // ================= ROTATION =================
+            if (placeable.placementType == PlacementType.Wall)
+            {
+                previewObject.transform.rotation = Quaternion.LookRotation(-hit.normal);
+            }
+            else
+            {
+                previewObject.transform.rotation = Quaternion.Euler(0, currentRotationY, 0);
+            }
+
+            // ================= VALIDATION =================
+            isValidPlacement = canPlace && CheckValidPlacement();
+
+            // ================= COLOR =================
             ApplyMaterial(previewObject, isValidPlacement ? validMaterial : invalidMaterial);
         }
     }
@@ -69,6 +100,8 @@ public class PlacementManager : MonoBehaviour
     bool CheckValidPlacement()
     {
         Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>();
+
+        if (renderers.Length == 0) return false;
 
         Bounds bounds = renderers[0].bounds;
 
@@ -85,17 +118,19 @@ public class PlacementManager : MonoBehaviour
 
         foreach (Collider col in colliders)
         {
-            // Ignore preview object itself
+            // Ignore preview itself
             if (col.transform.IsChildOf(previewObject.transform))
                 continue;
 
-            // Ignore ground
-            if (col.gameObject.layer == LayerMask.NameToLayer("Ground"))
-                continue;
-
-            if (!col.isTrigger)
+            // ❗ Block only other furniture
+            // Allow placement on top of surfaces (like TV stand)
+            if (!col.isTrigger && col.CompareTag("Placeable"))
             {
-                return false;
+                // Check if collider is BELOW the object
+                if (col.bounds.max.y > previewObject.transform.position.y - 0.01f)
+                {
+                    return false; // overlapping from side or inside
+                }
             }
         }
 
@@ -160,17 +195,24 @@ public class PlacementManager : MonoBehaviour
         inventory.ClearSelection();
     }
 
-    // ================= HELPERS =================
+    // ================= MATERIAL =================
     void ApplyMaterial(GameObject obj, Material mat)
     {
         Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
 
         foreach (Renderer r in renderers)
         {
-            r.material = mat;
+            foreach (Material m in r.materials)
+            {
+                if (m.HasProperty("_Color"))
+                {
+                    m.color = mat.color;
+                }
+            }
         }
     }
 
+    // ================= HELPERS =================
     void DisableColliders(GameObject obj)
     {
         Collider[] cols = obj.GetComponentsInChildren<Collider>();
