@@ -19,11 +19,46 @@ public class PlacementManager : MonoBehaviour
     private bool wasPressedLastFrame = false;
     private bool isValidPlacement = false;
 
+    // ✅ NEW: Grip button state
+    private bool wasGripPressedLastFrame = false;
+
     void Update()
     {
         HandlePreview();
         HandleRotation();
         HandlePlacement();
+        HandleCancel(); // ✅ NEW
+    }
+
+    // ================= CANCEL =================
+    void HandleCancel()
+    {
+        InputDevice device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+
+        if (device.TryGetFeatureValue(CommonUsages.gripButton, out bool gripPressed))
+        {
+            // Trigger only once (not while holding)
+            if (gripPressed && !wasGripPressedLastFrame)
+            {
+                CancelPlacement();
+            }
+
+            wasGripPressedLastFrame = gripPressed;
+        }
+    }
+
+    void CancelPlacement()
+    {
+        if (previewObject != null)
+        {
+            Destroy(previewObject);
+        }
+
+        inventory.ClearSelection();
+
+        previewObject = null;
+
+        Debug.Log("Placement Cancelled");
     }
 
     // ================= PREVIEW =================
@@ -31,14 +66,12 @@ public class PlacementManager : MonoBehaviour
     {
         GameObject prefab = inventory.GetSelectedItem();
 
-        // Create preview
         if (prefab != null && previewObject == null)
         {
             previewObject = Instantiate(prefab);
             DisableColliders(previewObject);
         }
 
-        // Destroy preview if deselected
         if (prefab == null && previewObject != null)
         {
             Destroy(previewObject);
@@ -62,7 +95,6 @@ public class PlacementManager : MonoBehaviour
             int hitLayer = hit.collider.gameObject.layer;
             bool canPlace = false;
 
-            // ================= LAYER BASED SURFACE CHECK =================
             if (placeable.placementType == PlacementType.Floor &&
                 hitLayer == LayerMask.NameToLayer("Floor"))
                 canPlace = true;
@@ -75,10 +107,8 @@ public class PlacementManager : MonoBehaviour
                      hitLayer == LayerMask.NameToLayer("Surface"))
                 canPlace = true;
 
-            // ================= POSITION =================
             previewObject.transform.position = hit.point + hit.normal * 0.02f;
 
-            // ================= ROTATION =================
             if (placeable.placementType == PlacementType.Wall)
             {
                 previewObject.transform.rotation = Quaternion.LookRotation(-hit.normal);
@@ -88,10 +118,8 @@ public class PlacementManager : MonoBehaviour
                 previewObject.transform.rotation = Quaternion.Euler(0, currentRotationY, 0);
             }
 
-            // ================= VALIDATION =================
             isValidPlacement = canPlace && CheckValidPlacement();
 
-            // ================= COLOR =================
             ApplyMaterial(previewObject, isValidPlacement ? validMaterial : invalidMaterial);
         }
     }
@@ -118,18 +146,14 @@ public class PlacementManager : MonoBehaviour
 
         foreach (Collider col in colliders)
         {
-            // Ignore preview itself
             if (col.transform.IsChildOf(previewObject.transform))
                 continue;
 
-            // ❗ Block only other furniture
-            // Allow placement on top of surfaces (like TV stand)
             if (!col.isTrigger && col.CompareTag("Placeable"))
             {
-                // Check if collider is BELOW the object
                 if (col.bounds.max.y > previewObject.transform.position.y - 0.01f)
                 {
-                    return false; // overlapping from side or inside
+                    return false;
                 }
             }
         }
